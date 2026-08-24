@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GLITCHROT Forensic Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0e27;
+            color: #b8ff00;
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .back-button {
+            display: inline-block;
+            padding: 10px 20px;
+            border: 1px solid #b8ff00;
+            background: transparent;
+            color: #b8ff00;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin-bottom: 20px;
+        }
+
+        .back-button:hover {
+            background: rgba(184, 255, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 32px;
+            margin-bottom: 30px;
+            text-shadow: 0 0 10px #b8ff00;
+        }
+
+        .report-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 40px;
+        }
+
+        .report-panel {
+            border: 1px solid #b8ff00;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .report-panel h3 {
+            color: #b8ff00;
+            font-size: 14px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #b8ff00;
+            padding-bottom: 10px;
+        }
+
+        .report-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 12px;
+        }
+
+        .report-item strong {
+            color: #888;
+        }
+
+        .report-item span {
+            color: #b8ff00;
+            text-align: right;
+        }
+
+        .layer-row {
+            display: grid;
+            grid-template-columns: 80px 1fr 80px;
+            gap: 15px;
+            margin-bottom: 15px;
+            align-items: center;
+            font-size: 12px;
+        }
+
+        .layer-name {
+            color: #b8ff00;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .anomaly-bar {
+            height: 12px;
+            border: 1px solid #b8ff00;
+            background: rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .anomaly-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            color: #000;
+        }
+
+        .confidence-text {
+            color: #b8ff00;
+            text-align: right;
+            min-width: 60px;
+        }
+
+        .meter-bar {
+            height: 20px;
+            border: 1px solid #b8ff00;
+            background: rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .meter-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+            color: #000;
+        }
+
+        .assessment-label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 5px;
+            margin-top: 15px;
+        }
+
+        .assessment-label:first-of-type {
+            margin-top: 0;
+        }
+
+        @media (max-width: 1024px) {
+            .report-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="back-button" onclick="window.location.href='index.html'">← BACK TO ANALYZER</button>
+
+        <h1>FORENSIC REPORT</h1>
+
+        <div class="report-grid">
+            <!-- Esquerda -->
+            <div>
+                <div class="report-panel">
+                    <h3>REPORT METADATA</h3>
+                    <div class="report-item">
+                        <strong>REPORT ID</strong>
+                        <span id="reportId">--</span>
+                    </div>
+                    <div class="report-item">
+                        <strong>TIMESTAMP</strong>
+                        <span id="reportTime">--</span>
+                    </div>
+                    <div class="report-item">
+                        <strong>FILENAME</strong>
+                        <span id="reportFilename">--</span>
+                    </div>
+                </div>
+
+                <div class="report-panel" style="margin-top: 20px;">
+                    <h3>FINAL ASSESSMENT</h3>
+                    
+                    <div class="assessment-label">SYNTHETIC PROBABILITY</div>
+                    <div class="meter-bar">
+                        <div class="meter-fill" id="syntheticMeter" style="width: 50%;">
+                            <span id="syntheticPercent">50%</span>
+                        </div>
+                    </div>
+
+                    <div class="assessment-label">REAL PROBABILITY</div>
+                    <div class="meter-bar">
+                        <div class="meter-fill" id="realMeter" style="width: 50%; background: linear-gradient(90deg, #00ff00, #ffff00, #ff0000);">
+                            <span id="realPercent">50%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Direita -->
+            <div>
+                <div class="report-panel">
+                    <h3>LAYER ANALYSIS</h3>
+                    <div id="layersContainer">
+                        <!-- Layers aqui -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function loadReport() {
+            const reportData = sessionStorage.getItem('forensicReport');
+            
+            if (!reportData) {
+                console.error("No report data found");
+                document.body.innerHTML = `
+                    <div class="container" style="margin-top: 40px;">
+                        <h2>No report data found</h2>
+                        <p><a href="index.html" style="color: #b8ff00;">Go back to analyzer</a></p>
+                    </div>
+                `;
+                return;
+            }
+
+            try {
+                const report = JSON.parse(reportData);
+                displayReport(report);
+            } catch (error) {
+                console.error("Error parsing report:", error);
+                alert("Error loading report data");
+            }
+        }
+
+        function displayReport(report) {
+            // Metadados
+            document.getElementById('reportId').textContent = report.report_id;
+            document.getElementById('reportTime').textContent = new Date(report.timestamp).toLocaleString();
+            document.getElementById('reportFilename').textContent = sessionStorage.getItem('filename') || 'unknown';
+
+            // Probabilidades
+            const synthetic = Math.round(report.final_assessment.synthetic_probability * 100);
+            const real = Math.round(report.final_assessment.real_probability * 100);
+
+            document.getElementById('syntheticPercent').textContent = `${synthetic}%`;
+            document.getElementById('syntheticMeter').style.width = `${synthetic}%`;
+
+            document.getElementById('realPercent').textContent = `${real}%`;
+            document.getElementById('realMeter').style.width = `${real}%`;
+
+            // Layers
+            const container = document.getElementById('layersContainer');
+            container.innerHTML = '';
+
+            report.layers.forEach(layer => {
+                const confidence = Math.round(layer.confidence * 100);
+                const anomalies = layer.anomalies_count;
+
+                const row = document.createElement('div');
+                row.className = 'layer-row';
+                row.innerHTML = `
+                    <div class="layer-name">${layer.name}</div>
+                    <div class="anomaly-bar">
+                        <div class="anomaly-fill" style="width: ${anomalies * 10}%;">
+                            ${anomalies}/10
+                        </div>
+                    </div>
+                    <div class="confidence-text">${confidence}%</div>
+                `;
+                
+                container.appendChild(row);
+            });
+
+            console.log("Report loaded successfully");
+        }
+
+        // Carregar quando página abrir
+        window.addEventListener('load', loadReport);
+    </script>
+</body>
+</html>
