@@ -2,8 +2,6 @@ const dropZone = document.querySelector(".drop-zone");
 const analyzeBtn = document.querySelector(".analyze-btn");
 const statusBlock = document.querySelector(".status-block strong");
 const statusNote = document.querySelector(".status-block span");
-const probabilityBlock = document.querySelector(".probability strong");
-const probabilityMeter = document.querySelector(".meter span");
 const reportFooter = document.querySelector(".report-footer");
 
 let selectedFile = null;
@@ -64,40 +62,121 @@ analyzeBtn.addEventListener("click", async () => {
       throw new Error(`Error: ${response.status}`);
     }
 
-    const result = await response.json();
-    console.log("Result:", result);
+    const report = await response.json();
+    console.log("ForensicReport:", report);
     
-    updateReport(result);
+    updateReportWithLayers(report);
     
   } catch (error) {
     console.error("Error:", error);
     statusBlock.textContent = "ERROR";
     statusNote.textContent = `Failed: ${error.message}`;
-  } finally {
     analyzeBtn.disabled = false;
   }
 });
 
-function updateReport(data) {
-  statusBlock.textContent = "COMPLETE";
-  statusNote.textContent = "Analysis finished";
-
-  const probability = Math.round(data.probability * 100);
-  probabilityBlock.textContent = `${probability}%`;
-  probabilityMeter.style.width = `${probability}%`;
+function updateReportWithLayers(report) {
+  // Salvar report para página dedicada
+  sessionStorage.setItem('forensicReport', JSON.stringify(report));
+  sessionStorage.setItem('filename', selectedFile.name);
   
-  if (data.classification === "Fake") {
-    probabilityBlock.style.color = "#ff0000";
-  } else {
-    probabilityBlock.style.color = "#00ff00";
+  console.log("Report saved to sessionStorage");
+  console.log("Report ID:", report.report_id);
+  console.log("Synthetic probability:", report.final_assessment.synthetic_probability);
+  console.log("Redirecting to report.html...");
+  
+  // Redirecionar para página de report
+  setTimeout(() => {
+    window.location.href = 'report.html';
+  }, 500);
+}
+
+function updateLayers(layers, syntheticProb, realProb) {
+  /* Atualizar painel com dados de cada layer */
+  
+  // Encontrar blocos de report
+  const reportBlocks = document.querySelectorAll(".report-block");
+  
+  if (reportBlocks.length < 5) {
+    console.warn("Painel não tem blocos suficientes para layers");
+    return;
+  }
+
+  // Layer 0: Neural
+  if (layers[0]) {
+    const neural = layers[0];
+    updateBlockWithLayer(reportBlocks[0], neural.name, neural.anomalies_count, neural.confidence);
+  }
+
+  // Layer 1: FFT
+  if (layers[1]) {
+    const fft = layers[1];
+    updateBlockWithLayer(reportBlocks[1], fft.name, fft.anomalies_count, fft.confidence);
+  }
+
+  // Layer 2: ELA
+  if (layers[2]) {
+    const ela = layers[2];
+    updateBlockWithLayer(reportBlocks[2], ela.name, ela.anomalies_count, ela.confidence);
+  }
+
+  // Layer 3: PRNU
+  if (layers[3]) {
+    const prnu = layers[3];
+    updateBlockWithLayer(reportBlocks[3], prnu.name, prnu.anomalies_count, prnu.confidence);
+  }
+
+  // Layer 4: Metadata
+  if (layers[4]) {
+    const metadata = layers[4];
+    updateBlockWithLayer(reportBlocks[4], metadata.name, metadata.anomalies_count, metadata.confidence);
+  }
+
+  // Atualizar probabilidade final
+  const probabilityBlock = document.querySelector(".probability strong");
+  const probabilityMeter = document.querySelector(".meter span");
+  
+  if (probabilityBlock && probabilityMeter) {
+    probabilityBlock.textContent = `${syntheticProb}%`;
+    probabilityMeter.style.width = `${syntheticProb}%`;
+    
+    if (syntheticProb > 70) {
+      probabilityBlock.style.color = "#ff0000";
+    } else {
+      probabilityBlock.style.color = "#00ff00";
+    }
+  }
+
+  console.log("Layers:", layers);
+  console.log(`Synthetic: ${syntheticProb}%, Real: ${realProb}%`);
+}
+
+function updateBlockWithLayer(block, layerName, anomalies, confidence) {
+  /* Atualizar um bloco com dados de layer */
+  
+  const confPercent = Math.round(confidence * 100);
+  
+  // Atualizar título/nome
+  const strong = block.querySelector("strong");
+  if (strong) {
+    strong.textContent = layerName;
   }
   
-  const now = new Date().toLocaleTimeString();
-  const reportId = Math.random().toString(36).substr(2, 8).toUpperCase();
-  reportFooter.innerHTML = `
-    <span>REPORT ID: ${reportId}</span>
-    <span>TIME: ${now}</span>
-  `;
+  // Atualizar descrição com anomalias e confiança
+  const reportLines = block.querySelector(".report-lines");
+  if (reportLines) {
+    const anomalyBars = createAnomalyBars(anomalies);
+    reportLines.innerHTML = `
+      ${anomalyBars} ${confPercent}%
+    `;
+  }
   
-  console.log("Report displayed");
+  console.log(`${layerName}: confidence=${confPercent}%, anomalies=${anomalies}`);
+}
+
+function createAnomalyBars(count) {
+  /* Criar representação visual de anomalias (█ preenchidas, ░ vazias) */
+  const filled = "█".repeat(Math.min(count, 10));
+  const empty = "░".repeat(Math.max(10 - count, 0));
+  return filled + empty;
 }
